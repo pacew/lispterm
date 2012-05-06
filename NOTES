@@ -1,0 +1,22 @@
+; in .sbclrc
+
+(defun sstart ()
+  (require 'swank)
+  (funcall (intern "CREATE-SERVER" "SWANK")
+	   :port 4005
+	   :dont-close t
+	   :coding-system "utf-8-unix"))
+
+
+
+; in .emacs:
+
+(global-set-key [f8] 'slime-selector)
+(defun sstart ()
+  (interactive)
+  (setq slime-net-coding-sytem 'utf-8-unix)
+  (slime-connect "localhost" 4005))
+
+
+
+
