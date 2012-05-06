@@ -106,9 +106,11 @@
 	  (*standard-input* instream))
       (format t "welcome to lispterm~%")
       (loop
+	 (format t "~&lisp> ")
+	 (force-output)
 	 (let ((expr (read)))
 	   (if (eq expr 'q)
 	       (return))
 	   (print (eval expr))))))
-  (format t "listem-top-level done~%"))
+  (format t "listerm-top-level done~%"))
 
