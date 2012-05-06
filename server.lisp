@@ -4,6 +4,12 @@
   ((socket 
     :initarg :socket)))
 
+(defclass lispterm-input (fundamental-character-input-stream)
+  ((socket 
+    :initarg :socket)
+   (unread-char
+    :initform nil)))
+
 (defmethod stream-write-char ((stream lispterm-output)
 			      char)
   (let ((code (char-code char))
@@ -33,11 +39,25 @@
 	   (setf len 1)))
     (sb-bsd-sockets:socket-send (slot-value stream 'socket) buf len)))
 
-(defclass lispterm ()
-  ((socket
-    :initarg :socket)
-   (thread
-    :initarg :tread)))
+(defmethod stream-read-char ((stream lispterm-input))
+  (let ((c (slot-value stream 'unread-char)))
+    (cond ((not (null c))
+	   (setf (slot-value stream 'unread-char) nil)
+	   c)
+	  (t
+	   (do ()
+	       (())
+	     (let* ((val (sb-bsd-sockets:socket-receive
+			  (slot-value stream 'socket)
+			  nil 1))
+		    (char (aref val 0)))
+	       (cond ((char= char #\Return))
+		     (t
+		      (return char)))))))))
+	  
+(defmethod stream-unread-char ((stream lispterm-input) c)
+  (setf (slot-value stream 'unread-char) c))
+
 
 (defun lispterm-cleanup ()
   (format t "killing old lispterm threads~%")
@@ -72,12 +92,23 @@
 			     :name "lispterm"))))
 
 (defvar *out*)
+(defvar *in*)
 
 ;;; sb-bsd-sockets:socket-make-stream
 (defun lispterm-top-level (sock)
   (format t "top level ~s~%" sock)
   (let ((outstream (make-instance 'lispterm-output
-				  :socket sock)))
-    (let ((*standard-output* outstream))
-      (format t "welcome to é lispterm~%"))))
+				  :socket sock))
+	(instream (make-instance 'lispterm-input
+				 :socket sock)))
+    (setq *in* instream)
+    (let ((*standard-output* outstream)
+	  (*standard-input* instream))
+      (format t "welcome to lispterm~%")
+      (loop
+	 (let ((expr (read)))
+	   (if (eq expr 'q)
+	       (return))
+	   (print (eval expr))))))
+  (format t "listem-top-level done~%"))
 
